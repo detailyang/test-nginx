@@ -2722,7 +2722,7 @@ will apply the filters to the actual response body data instead of the expected 
     --- response_body
     HELLO
 
-If the response_body_filters is an array, it will be applied a chain of filters one by one for all the requests:
+If the response_body_filters is an array, we will apply all the filters one by one to the actual response body data instead of the expected response body data:
 
     --- request eval
     ["GET /hello", "GET /world"]
