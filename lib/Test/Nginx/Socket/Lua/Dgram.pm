@@ -8,10 +8,12 @@ our $VERSION = '0.33';
 
 sub get_best_long_bracket_level ($);
 sub quote_as_lua_str ($);
-sub gen_data_file ($);
+sub gen_data_file ($$);
+sub write_data_file ($);
 
 my $port = $ENV{TEST_NGINX_DGRAM_PORT} // ($ServerPort + 1);
 my $counter = 0;
+my %data_files;
 
 add_block_preprocessor(sub {
     my ($block) = @_;
@@ -90,7 +92,7 @@ _EOC_
 _EOC_
 
         if (defined $dgram_req) {
-            my $file = gen_data_file($dgram_req);
+            my $file = gen_data_file($block, $dgram_req);
             $new_http_server_config .= <<_EOC_;
                     local f = assert(io.open('$file', 'r'))
                     local data = assert(f:read("*a"))
@@ -165,7 +167,7 @@ _EOC_
 _EOC_
 
             if (defined $dgram_req2) {
-                my $file = gen_data_file($dgram_req2);
+                my $file = gen_data_file($block, $dgram_req2);
                 $new_http_server_config .= <<_EOC_;
                     local f = assert(io.open('$file', 'r'))
                     local data = assert(f:read("*a"))
@@ -216,7 +218,7 @@ _EOC_
 _EOC_
 
             if (defined $dgram_req3) {
-                my $file = gen_data_file($dgram_req3);
+                my $file = gen_data_file($block, $dgram_req3);
                 $new_http_server_config .= <<_EOC_;
                         local f = assert(io.open('$file', 'r'))
                         local data = assert(f:read("*a"))
@@ -318,22 +320,34 @@ sub quote_as_lua_str ($) {
     "'$s'";
 }
 
-sub gen_data_file ($) {
-    my $s = shift;
+sub gen_data_file ($$) {
+    my ($block, $data) = @_;
     $counter++;
-    if (!-d 't/tmp') {
-        mkdir 't/tmp';
-    }
-    my $fname = "t/tmp/data$counter.txt";
-    open my $fh, ">$fname"
-        or die "cannot open $fname for writing: $!\n";
-    print $fh $s;
-    close $fh;
-    return $fname;
+
+    my $name = "dgram-request-$$-$counter.data";
+    $data_files{$name} = $data;
+
+    my $setup = $block->post_setup_server_root // '';
+    $setup .= "\nTest::Nginx::Socket::Lua::Dgram::write_data_file('$name');\n";
+    $block->set_value("post_setup_server_root", $setup);
+
+    return html_dir() . "/$name";
 }
 
-END {
-    system("rm -rf t/tmp");
+
+sub write_data_file ($) {
+    my $name = shift;
+    my $path = html_dir() . "/$name";
+    my $data = delete $data_files{$name};
+
+    die "no pending datagram request data for $name\n"
+        if !defined $data;
+
+    open my $fh, ">$path"
+        or die "cannot open $path for writing: $!\n";
+    binmode $fh;
+    print $fh $data;
+    close $fh;
 }
 
 1;
