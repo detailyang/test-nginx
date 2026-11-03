@@ -686,7 +686,8 @@ our $PrevConfig;
 our $ServRoot;
 
 if ($Randomize) {
-    $ServRoot = File::Spec->rel2abs("t/servroot_" . $ServerPort);
+    my $prefix = $ENV{TEST_NGINX_SERVROOT} || 't/servroot';
+    $ServRoot = File::Spec->rel2abs($prefix . "_" . $ServerPort);
 
 } else {
     $ServRoot = $ENV{TEST_NGINX_SERVROOT} || File::Spec->rel2abs('t/servroot');
@@ -3318,6 +3319,7 @@ retry:
 }
 
 END {
+    local $?; # Cleanup commands must not replace the test's exit status.
     return if $InSubprocess;
 
     cleanup();
@@ -3342,8 +3344,8 @@ END {
     check_sanitizer_log();
 
     if ($Randomize) {
-        if (defined $ServRoot && -d $ServRoot && $ServRoot =~ m{/t/servroot_\d+}) {
-            system("rm -rf $ServRoot");
+        if (defined $ServRoot && -d $ServRoot) {
+            remove_tree($ServRoot);
         }
     }
 }

@@ -4778,6 +4778,10 @@ server when the config does not change between two tests.
 The root of the nginx "hierarchy" (where you find the conf, *_tmp and logs
 directories). This value will be used with the C<-p> option of C<nginx>.
 Defaults to appending C<t/servroot> to the current directory.
+With C<TEST_NGINX_RANDOMIZE=1>, this value is a pathname prefix: the scaffold
+appends C<_> and the allocated server port. The randomized root retains the
+usual cleanup behavior. Relative prefixes are resolved from the current
+directory.
 
 =head2 TEST_NGINX_IGNORE_MISSING_DIRECTIVES
 
